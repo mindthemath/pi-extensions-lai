@@ -1,0 +1,43 @@
+{
+  "name": "pi-lightning-ai-provider",
+  "version": "0.1.0",
+  "description": "Lightning AI model provider for the pi coding agent, with live model and pricing discovery",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mindthemath/pi-extensions-lai.git"
+  },
+  "homepage": "https://github.com/mindthemath/pi-extensions-lai#readme",
+  "bugs": {
+    "url": "https://github.com/mindthemath/pi-extensions-lai/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-coding-agent",
+    "lightning-ai",
+    "llm",
+    "model-provider"
+  ],
+  "files": [
+    "extensions/",
+    "README.md",
+    "RELEASING.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/lightning-ai.ts"
+    ]
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check:pack": "npm pack --dry-run"
+  }
+}
