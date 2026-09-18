@@ -4,6 +4,7 @@
   "description": "Lightning AI model provider for the pi coding agent, with live model and pricing discovery",
   "type": "module",
   "license": "MIT",
+  "author": "Mind the Math LLC",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mindthemath/pi-extensions-lai.git"
@@ -22,7 +23,6 @@
   "files": [
     "extensions/",
     "README.md",
-    "RELEASING.md",
     "LICENSE"
   ],
   "peerDependencies": {

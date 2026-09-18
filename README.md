@@ -15,13 +15,13 @@ AI's OpenAI-compatible model gateway as the `lai` provider.
 
 ## Install
 
-Once the npm package is published:
+From npm:
 
 ```bash
 pi install npm:pi-lightning-ai-provider
 ```
 
-Until then, install directly from GitHub:
+Or directly from GitHub:
 
 ```bash
 pi install git:github.com/mindthemath/pi-extensions-lai
@@ -85,8 +85,6 @@ Check exactly what npm would publish:
 ```bash
 npm pack --dry-run
 ```
-
-See [RELEASING.md](RELEASING.md) for the npm release process.
 
 ## License
 
