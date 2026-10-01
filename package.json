@@ -38,6 +38,17 @@
     "access": "public"
   },
   "scripts": {
-    "check:pack": "npm pack --dry-run"
+    "check:pack": "npm pack --dry-run",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/provider.test.ts",
+    "test:live": "LAI_LIVE=1 tsx --test test/live.test.ts"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.99.2",
+    "@earendil-works/pi-coding-agent": "^0.99.2",
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "typebox": "^1.0.0"
   }
 }

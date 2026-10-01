@@ -8,6 +8,7 @@ AI's OpenAI-compatible model gateway as the `lai` provider.
 - Discovers Lightning AI's official model catalog at startup.
 - Filters user-created agent records and duplicate IDs from the public catalog.
 - Imports current context windows, modalities, output limits, and pricing.
+- Uses the Responses API for GPT-5.4+ and GPT-6 tool calls with reasoning.
 - Reports token usage and calculates request costs in pi.
 - Supports pi's `/login` credential flow and `LIGHTNING_API_KEY`.
 - Keeps a static seven-model fallback for offline startup.
@@ -62,6 +63,17 @@ Catalog presence is not a health check. A listed backend can still be warming,
 temporarily unavailable, or incompatible with a particular request option. The
 extension does not invoke every model at startup because probes are billable.
 
+## API compatibility
+
+GPT-5.4 and newer GPT models use Lightning's `/responses` endpoint through
+pi's built-in OpenAI Responses implementation. The gateway rejects function
+tools combined with `reasoning_effort` on `/chat/completions` for these models.
+Switching APIs preserves reasoning rather than silently disabling it.
+
+Older OpenAI models, Qwen, and other gateway models keep the Chat Completions
+path. The same routing policy applies to both discovered and offline models.
+Discovery also preserves the fallback models' extra thinking levels.
+
 ## Pricing and usage
 
 Lightning AI returns OpenAI-style prompt, completion, total, and reasoning token
@@ -79,6 +91,40 @@ Try the extension without installing it:
 ```bash
 pi -e ./extensions/lightning-ai.ts
 ```
+
+Install development dependencies and run offline checks (no API calls):
+
+```bash
+npm ci --ignore-scripts
+npm run check
+npm test
+```
+
+Offline tests exercise pi's actual provider dispatch and request serializers,
+including tool declarations, tool-result replay, reasoning settings, catalog
+filtering, metadata, and fallback/discovery consistency.
+
+Run the **billable**, opt-in live streaming tests:
+
+```bash
+LIGHTNING_API_KEY='...' npm run test:live
+```
+
+The default matrix is Qwen3.8, GPT-5.2, GPT-5.4 nano, GPT-5.5, GPT-5.6 Sol,
+and GPT-6.1 Sol. Each model must call a small tool, accept its result, report
+that result in its final answer, and return usage/cost data. Requests use low
+reasoning, at most 1,024 output tokens per turn, and a 60-second timeout.
+Live tests read only `LIGHTNING_API_KEY`, not pi's credential store or `.env`.
+
+Override the matrix to verify other official catalog models:
+
+```bash
+LAI_TEST_MODELS='lightning-ai/gemma-4-31B-it,google/gemini-2.5-flash' npm run test:live
+```
+
+Missing catalog models fail explicitly; fallback availability is not proof
+that a backend is still offered. Live tests verify low reasoning only, not
+all thinking levels or multimodal capabilities.
 
 Check exactly what npm would publish:
 

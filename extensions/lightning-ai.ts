@@ -1,10 +1,11 @@
 import {
   createProvider,
   envApiKeyAuth,
-  openAICompletionsApi,
   type Model,
   type OpenAICompletionsCompat,
 } from "@earendil-works/pi-ai";
+import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const PROVIDER_ID = "lai";
@@ -27,7 +28,7 @@ const commonCompat = {
   thinkingFormat: "openai" as const,
 };
 
-type LightningModel = Model<"openai-completions">;
+export type LightningModel = Model<"openai-completions"> | Model<"openai-responses">;
 type ModelSpec = Omit<LightningModel, "api" | "provider" | "baseUrl" | "compat">;
 
 type CatalogEntry = {
@@ -43,10 +44,32 @@ type CatalogEntry = {
   architecture?: { input_modalities?: string[] };
 };
 
+// The gateway rejects function tools + reasoning on Chat Completions for
+// GPT-5.4 and newer. Responses preserves both tools and reasoning.
+export function usesResponses(id: string): boolean {
+  const version = /^openai\/gpt-(\d+)(?:\.(\d+))?(?:-|$)/.exec(id);
+  if (!version) return false;
+  const major = Number(version[1]);
+  return major >= 6 || (major === 5 && Number(version[2] ?? 0) >= 4);
+}
+
 function model(
   spec: ModelSpec,
   compat: Partial<OpenAICompletionsCompat> = {},
 ): LightningModel {
+  if (usesResponses(spec.id)) {
+    return {
+      ...spec,
+      api: "openai-responses",
+      provider: PROVIDER_ID,
+      baseUrl: BASE_URL,
+      compat: {
+        supportsDeveloperRole: false,
+        supportsStrictMode: false,
+        supportsLongCacheRetention: false,
+      },
+    };
+  }
   return {
     ...spec,
     api: "openai-completions",
@@ -86,7 +109,7 @@ function usesMaxCompletionTokens(id: string): boolean {
   );
 }
 
-function fromCatalog(entry: CatalogEntry): LightningModel | undefined {
+export function fromCatalog(entry: CatalogEntry): LightningModel | undefined {
   const namespace = OFFICIAL_NAMESPACES.get(entry.provider?.name ?? "");
   if (!namespace || !entry.id?.startsWith(namespace)) return undefined;
 
@@ -113,6 +136,8 @@ function fromCatalog(entry: CatalogEntry): LightningModel | undefined {
       id: entry.id,
       name: `LAI: ${entry.name || entry.id}`,
       reasoning,
+      // Discovery must not erase thinking levels present in the offline model.
+      thinkingLevelMap: MODELS.find((model) => model.id === entry.id)?.thinkingLevelMap,
       input: [...input],
       cost: {
         input: Number((inputRate * 1_000_000).toPrecision(12)),
@@ -132,7 +157,7 @@ function fromCatalog(entry: CatalogEntry): LightningModel | undefined {
   );
 }
 
-async function fetchModels(signal: AbortSignal): Promise<LightningModel[]> {
+export async function fetchModels(signal: AbortSignal): Promise<LightningModel[]> {
   const response = await fetch(MODELS_URL, { signal });
   if (!response.ok) {
     throw new Error(`Lightning AI model discovery failed: HTTP ${response.status}`);
@@ -156,7 +181,7 @@ async function fetchModels(signal: AbortSignal): Promise<LightningModel[]> {
 // Static fallback for offline startup and for the initially requested models.
 // Dynamic discovery replaces matching entries with current metadata and adds
 // the rest of Lightning AI's official catalog.
-const MODELS: LightningModel[] = [
+export const MODELS: LightningModel[] = [
   model({
     id: "lightning-ai/Qwen3.8-27B",
     name: "LAI: Qwen3.8 27B",
@@ -232,6 +257,23 @@ const MODELS: LightningModel[] = [
   ),
 ];
 
+export function createLightningProvider(models: LightningModel[] = MODELS) {
+  return createProvider({
+    id: PROVIDER_ID,
+    name: "Lightning AI",
+    baseUrl: BASE_URL,
+    auth: {
+      apiKey: envApiKeyAuth("Lightning AI API key", ["LIGHTNING_API_KEY"]),
+    },
+    models,
+    fetchModels: ({ signal }) => fetchModels(signal),
+    api: {
+      "openai-completions": openAICompletionsApi(),
+      "openai-responses": openAIResponsesApi(),
+    },
+  });
+}
+
 export default async function (pi: ExtensionAPI) {
   let models = MODELS;
   try {
@@ -240,17 +282,5 @@ export default async function (pi: ExtensionAPI) {
     // Keep the static fallback when offline or when discovery is unavailable.
   }
 
-  pi.registerProvider(
-    createProvider({
-      id: PROVIDER_ID,
-      name: "Lightning AI",
-      baseUrl: BASE_URL,
-      auth: {
-        apiKey: envApiKeyAuth("Lightning AI API key", ["LIGHTNING_API_KEY"]),
-      },
-      models,
-      fetchModels: ({ signal }) => fetchModels(signal),
-      api: openAICompletionsApi(),
-    }),
-  );
+  pi.registerProvider(createLightningProvider(models));
 }
