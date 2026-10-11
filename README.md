@@ -76,6 +76,11 @@ Older OpenAI models, Qwen, and other gateway models keep the Chat Completions
 path. The same routing policy applies to both discovered and offline models.
 Discovery also preserves the fallback models' extra thinking levels.
 
+On upgrade, cached `lai` model entries are migrated to the current API and
+compatibility policy before Pi restores them, including during offline startup.
+Pricing, limits, and catalog freshness timestamps are preserved. No cache deletion
+or re-login is needed; credentials and other providers' caches are not modified.
+
 ## Pricing and usage
 
 Lightning AI returns OpenAI-style prompt, completion, total, and reasoning token

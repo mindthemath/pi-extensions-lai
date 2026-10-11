@@ -43,7 +43,7 @@
   "scripts": {
     "check:pack": "npm pack --dry-run",
     "check": "tsc --noEmit",
-    "test": "tsx --test test/provider.test.ts test/package.test.ts",
+    "test": "tsx --test test/provider.test.ts test/package.test.ts test/cache.test.ts",
     "test:live": "LAI_LIVE=1 tsx --test test/live.test.ts",
     "prepublishOnly": "npm run check && npm test"
   },

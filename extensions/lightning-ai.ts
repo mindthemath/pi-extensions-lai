@@ -248,7 +248,7 @@ export const MODELS: LightningModel[] = [
 ];
 
 export function createLightningProvider(models: LightningModel[] = MODELS) {
-  return createProvider({
+  const provider = createProvider({
     id: PROVIDER_ID,
     name: "Lightning AI",
     baseUrl: BASE_URL,
@@ -262,6 +262,39 @@ export function createLightningProvider(models: LightningModel[] = MODELS) {
       "openai-responses": openAIResponsesApi(),
     },
   });
+  const refreshModels = provider.refreshModels!;
+  provider.refreshModels = async (context) => {
+    // Pi restores persisted models over the freshly registered catalog, even
+    // offline. Keep cached metadata, but reapply extension-owned API policy so
+    // an upgrade cannot restore obsolete routing/compatibility or thinking levels.
+    const stored = context.stored && {
+      ...context.stored,
+      models: context.stored.models.map((entry) => {
+        if (entry.provider !== PROVIDER_ID || (entry.type !== undefined && entry.type !== "chat")) {
+          return entry;
+        }
+        return model({
+          ...entry,
+          reasoning: isReasoningModel(entry.id),
+          thinkingLevelMap: MODELS.find((model) => model.id === entry.id)?.thinkingLevelMap
+            ?? entry.thinkingLevelMap,
+        });
+      }),
+    };
+    const migrated = stored && JSON.stringify(stored.models) !== JSON.stringify(context.stored!.models);
+    await refreshModels({
+      ...context,
+      stored,
+      // Persist the migration in the same generation-checked publication as
+      // restoration. Preserve freshness timestamps; no remote check occurred.
+      publish: (publication) => context.publish(
+        migrated && publication.persist === undefined
+          ? { ...publication, persist: stored }
+          : publication,
+      ),
+    });
+  };
+  return provider;
 }
 
 export default async function (pi: ExtensionAPI) {
