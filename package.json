@@ -1,6 +1,6 @@
 {
   "name": "pi-lightning-ai-provider",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightning AI model provider for the pi coding agent, with live model and pricing discovery",
   "type": "module",
   "license": "MIT",
@@ -26,8 +26,8 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@earendil-works/pi-ai": "*",
-    "@earendil-works/pi-coding-agent": "*"
+    "@earendil-works/pi-ai": ">=0.99.2",
+    "@earendil-works/pi-coding-agent": ">=0.99.2"
   },
   "pi": {
     "extensions": [
@@ -37,7 +37,22 @@
   "publishConfig": {
     "access": "public"
   },
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "scripts": {
-    "check:pack": "npm pack --dry-run"
+    "check:pack": "npm pack --dry-run",
+    "check": "tsc --noEmit",
+    "test": "tsx --test test/provider.test.ts test/package.test.ts test/cache.test.ts",
+    "test:live": "LAI_LIVE=1 tsx --test test/live.test.ts",
+    "prepublishOnly": "npm run check && npm test"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^1.1.0",
+    "@earendil-works/pi-coding-agent": "^1.1.0",
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typebox": "^1.0.0",
+    "typescript": "^7.0.2"
   }
 }
