@@ -24,6 +24,30 @@ test("discovery and fallback retain the same API, compat and thinking levels", (
   }
 });
 
+test("compatibility is derived per API without Chat Completions fields leaking into Responses", async () => {
+  for (const [id, reasoning, maxTokensField] of [
+    ["openai/gpt-4.1", false, "max_tokens"],
+    ["openai/gpt-5.2-2025-12-11", true, "max_completion_tokens"],
+    ["openai/o3", true, "max_completion_tokens"],
+    ["lightning-ai/Qwen3.8-27B", true, "max_tokens"],
+  ] as const) {
+    const model = fromCatalog(catalog(id))!;
+    assert.equal(model.api, "openai-completions");
+    if (model.api !== "openai-completions") throw new Error("Expected Chat Completions");
+    assert.equal(model.compat?.supportsReasoningEffort, reasoning, id);
+    assert.equal(model.compat?.maxTokensField, maxTokensField, id);
+  }
+  const nonReasoning = fromCatalog(catalog("openai/gpt-4.1"))!;
+  assert.equal((await payload(nonReasoning)).reasoning_effort, undefined);
+  for (const model of [configuredModel("openai/gpt-5.6-sol"), fromCatalog(catalog("openai/gpt-5.6-sol"))!]) {
+    assert.equal(model.api, "openai-responses");
+    assert.ok(model.compat);
+    assert.equal("supportsReasoningEffort" in model.compat, false);
+    assert.equal("maxTokensField" in model.compat, false);
+    assert.equal("thinkingFormat" in model.compat, false);
+  }
+});
+
 test("catalog validates official namespaces and imports metadata", () => {
   assert.equal(fromCatalog({ ...catalog("openai/gpt-5.6-sol"), provider: {} }), undefined);
   assert.equal(fromCatalog({ ...catalog("openai/gpt-5.6-sol"), provider: { name: "Google" } }), undefined);

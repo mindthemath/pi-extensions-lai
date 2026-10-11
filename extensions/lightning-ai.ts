@@ -21,12 +21,10 @@ const OFFICIAL_NAMESPACES = new Map([
 const commonCompat = {
   supportsStore: false,
   supportsDeveloperRole: false,
-  supportsReasoningEffort: true,
   supportsUsageInStreaming: true,
   supportsStrictMode: false,
-  maxTokensField: "max_tokens" as const,
-  thinkingFormat: "openai" as const,
-};
+  thinkingFormat: "openai",
+} satisfies OpenAICompletionsCompat;
 
 export type LightningModel = Model<"openai-completions"> | Model<"openai-responses">;
 type ModelSpec = Omit<LightningModel, "api" | "provider" | "baseUrl" | "compat">;
@@ -53,10 +51,9 @@ export function usesResponses(id: string): boolean {
   return major >= 6 || (major === 5 && Number(version[2] ?? 0) >= 4);
 }
 
-function model(
-  spec: ModelSpec,
-  compat: Partial<OpenAICompletionsCompat> = {},
-): LightningModel {
+function model(spec: ModelSpec): LightningModel {
+  // Derive compatibility within each API branch: Chat Completions-only
+  // fields do not apply to Responses, so callers cannot pass ignored overrides.
   if (usesResponses(spec.id)) {
     return {
       ...spec,
@@ -75,7 +72,13 @@ function model(
     api: "openai-completions",
     provider: PROVIDER_ID,
     baseUrl: BASE_URL,
-    compat: { ...commonCompat, ...compat },
+    compat: {
+      ...commonCompat,
+      supportsReasoningEffort: spec.reasoning,
+      maxTokensField: usesMaxCompletionTokens(spec.id)
+        ? "max_completion_tokens"
+        : "max_tokens",
+    },
   };
 }
 
@@ -131,30 +134,22 @@ export function fromCatalog(entry: CatalogEntry): LightningModel | undefined {
     ? (["text", "image"] as const)
     : (["text"] as const);
 
-  return model(
-    {
-      id: entry.id,
-      name: `LAI: ${entry.name || entry.id}`,
-      reasoning,
-      // Discovery must not erase thinking levels present in the offline model.
-      thinkingLevelMap: MODELS.find((model) => model.id === entry.id)?.thinkingLevelMap,
-      input: [...input],
-      cost: {
-        input: Number((inputRate * 1_000_000).toPrecision(12)),
-        output: Number((outputRate * 1_000_000).toPrecision(12)),
-        cacheRead: 0,
-        cacheWrite: 0,
-      },
-      contextWindow,
-      maxTokens,
+  return model({
+    id: entry.id,
+    name: `LAI: ${entry.name || entry.id}`,
+    reasoning,
+    // Discovery must not erase thinking levels present in the offline model.
+    thinkingLevelMap: MODELS.find((model) => model.id === entry.id)?.thinkingLevelMap,
+    input: [...input],
+    cost: {
+      input: Number((inputRate * 1_000_000).toPrecision(12)),
+      output: Number((outputRate * 1_000_000).toPrecision(12)),
+      cacheRead: 0,
+      cacheWrite: 0,
     },
-    {
-      supportsReasoningEffort: reasoning,
-      maxTokensField: usesMaxCompletionTokens(entry.id)
-        ? "max_completion_tokens"
-        : "max_tokens",
-    },
-  );
+    contextWindow,
+    maxTokens,
+  });
 }
 
 export async function fetchModels(signal: AbortSignal): Promise<LightningModel[]> {
@@ -229,32 +224,26 @@ export const MODELS: LightningModel[] = [
     contextWindow: 1_048_576,
     maxTokens: 128_000,
   }),
-  model(
-    {
-      id: "openai/gpt-5.6-sol",
-      name: "LAI: GPT-5.6 Sol",
-      reasoning: true,
-      thinkingLevelMap: { xhigh: "xhigh" },
-      input: ["text", "image"],
-      cost: { input: 5, output: 30, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 1_050_000,
-      maxTokens: 128_000,
-    },
-    { maxTokensField: "max_completion_tokens" },
-  ),
-  model(
-    {
-      id: "openai/gpt-5.5-2026-04-23",
-      name: "LAI: GPT-5.5 (2026-04-23)",
-      reasoning: true,
-      thinkingLevelMap: { xhigh: "xhigh" },
-      input: ["text", "image"],
-      cost: { input: 5, output: 30, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 1_050_000,
-      maxTokens: 128_000,
-    },
-    { maxTokensField: "max_completion_tokens" },
-  ),
+  model({
+    id: "openai/gpt-5.6-sol",
+    name: "LAI: GPT-5.6 Sol",
+    reasoning: true,
+    thinkingLevelMap: { xhigh: "xhigh" },
+    input: ["text", "image"],
+    cost: { input: 5, output: 30, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1_050_000,
+    maxTokens: 128_000,
+  }),
+  model({
+    id: "openai/gpt-5.5-2026-04-23",
+    name: "LAI: GPT-5.5 (2026-04-23)",
+    reasoning: true,
+    thinkingLevelMap: { xhigh: "xhigh" },
+    input: ["text", "image"],
+    cost: { input: 5, output: 30, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1_050_000,
+    maxTokens: 128_000,
+  }),
 ];
 
 export function createLightningProvider(models: LightningModel[] = MODELS) {
