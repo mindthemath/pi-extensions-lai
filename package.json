@@ -1,6 +1,6 @@
 {
   "name": "pi-lightning-ai-provider",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lightning AI model provider for the pi coding agent, with live model and pricing discovery",
   "type": "module",
   "license": "MIT",
