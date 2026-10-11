@@ -1,11 +1,12 @@
+// Pi's loader aliases this entrypoint; API subpath imports do not resolve there.
 import {
   createProvider,
   envApiKeyAuth,
+  openAICompletionsApi,
+  openAIResponsesApi,
   type Model,
   type OpenAICompletionsCompat,
-} from "@earendil-works/pi-ai";
-import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
-import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
+} from "@earendil-works/pi-ai/compat";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const PROVIDER_ID = "lai";

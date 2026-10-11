@@ -16,6 +16,8 @@ AI's OpenAI-compatible model gateway as the `lai` provider.
 
 ## Install
 
+Requires Pi 0.99.2 or newer and Node.js 22.19 or newer.
+
 From npm:
 
 ```bash
@@ -102,7 +104,9 @@ npm test
 
 Offline tests exercise pi's actual provider dispatch and request serializers,
 including tool declarations, tool-result replay, reasoning settings, catalog
-filtering, metadata, and fallback/discovery consistency.
+filtering, metadata, and fallback/discovery consistency. A package smoke test
+also packs the actual npm tarball and loads it through Pi's extension loader
+from an isolated temporary directory with no local dependencies or network.
 
 Run the **billable**, opt-in live streaming tests:
 
@@ -131,6 +135,28 @@ Check exactly what npm would publish:
 ```bash
 npm pack --dry-run
 ```
+
+## Release
+
+PR checks run the offline suite, type-checking, dependency audit, and package
+check on Node.js 22 and 24. Development checks use Pi 1.1.0; packed-extension
+loading has also been verified with the minimum supported Pi 0.99.2. Live tests are never run automatically in CI.
+
+After review and merging to `main`, publish from a clean checkout:
+
+```bash
+npm ci --ignore-scripts
+npm run check
+npm test
+npm audit --audit-level=moderate
+npm run check:pack
+npm publish --access public
+```
+
+`npm publish` also runs type-checking and offline tests via `prepublishOnly`.
+The release version must be unused on npm; this branch prepares `0.1.1`.
+Verify the published version with `npm view pi-lightning-ai-provider version`.
+Publishing requires npm package-owner credentials (and possibly an OTP).
 
 ## License
 
